@@ -1,9 +1,6 @@
-#include "types.h"
-#include "riscv.h"
 #include "defs.h"
 #include "param.h"
 #include "spinlock.h"
-#include "sleeplock.h"
 #include "fs.h"
 #include "buf.h"
 
@@ -46,14 +43,16 @@ struct log {
   int dev;
   struct logheader lh;
 };
-struct log log;
 
 static void recover_from_log(void);
 static void commit();
 
+struct log log;
+
 void
 initlog(int dev, struct superblock *sb)
 {
+  // uint x = log + 12;
   if (sizeof(struct logheader) >= BSIZE)
     panic("initlog: too big logheader");
 

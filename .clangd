@@ -1,0 +1,15 @@
+If:
+  PathExclude: mkfs/.* 
+CompileFlags:                     
+  Add: [-ffreestanding, -fno-common, -nostdlib, -mno-relax, -I..]
+
+---
+
+If:
+  PathMatch: mkfs/.* 
+CompileFlags:                     
+  Add: "-I.."
+#If:                               # Apply this config conditionally
+#  PathMatch: mkfs/* 
+#  CompileFlags:                     # Tweak the parse settings
+#    Remove: "-nostdlib"

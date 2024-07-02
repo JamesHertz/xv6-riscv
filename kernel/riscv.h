@@ -1,4 +1,7 @@
-#ifndef __ASSEMBLER__
+#ifndef __XV6_RISCV__
+#define __XV6_RISCV__
+
+#ifndef __ASSEMBLER__ // TODO: think about removing this
 #include "types.h"
 
 // which hart (core) is this?
@@ -363,3 +366,5 @@ sfence_vma()
 // Sv39, to avoid having to sign-extend virtual addresses
 // that have the high bit set.
 #define MAXVA (1L << (9 + 9 + 9 + 12 - 1))
+
+#endif
