@@ -1,3 +1,7 @@
+#ifndef __XV6_STAT__
+#define __XV6_STAT__
+
+#include "types.h"
 #define T_DIR     1   // Directory
 #define T_FILE    2   // File
 #define T_DEVICE  3   // Device
@@ -9,3 +13,5 @@ struct stat {
   short nlink; // Number of links to file
   uint64 size; // Size of file in bytes
 };
+
+#endif

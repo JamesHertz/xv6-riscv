@@ -1,5 +1,6 @@
 #ifndef __XV6_TYPES__
 #define __XV6_TYPES__
+
 typedef unsigned int   uint;
 typedef unsigned short ushort;
 typedef unsigned char  uchar;
