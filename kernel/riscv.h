@@ -337,8 +337,9 @@ sfence_vma()
 
 #endif // __ASSEMBLER__
 
-#define PGSIZE 4096 // bytes per page
-#define PGSHIFT 12  // bits of offset within a page
+
+#define PGSIZE 4096  // bytes per page
+#define PGSHIFT 12   // bits of offset within a page
 
 #define PGROUNDUP(sz)  (((sz)+PGSIZE-1) & ~(PGSIZE-1))
 #define PGROUNDDOWN(a) (((a)) & ~(PGSIZE-1))
@@ -360,6 +361,10 @@ sfence_vma()
 #define PXMASK          0x1FF // 9 bits
 #define PXSHIFT(level)  (PGSHIFT+(9*(level)))
 #define PX(level, va) ((((uint64) (va)) >> PXSHIFT(level)) & PXMASK)
+
+#define PG_SIZE(level) (1 << PXSHIFT(level))
+#define IS_ALIGNED(addr, level) ((addr) % PG_SIZE(level) == 0)
+#define PG_MAX_LEVEL 2
 
 // one beyond the highest possible virtual address.
 // MAXVA is actually one bit less than the max allowed by

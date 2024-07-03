@@ -1,10 +1,8 @@
-#include "param.h"
 #include "types.h"
 #include "memlayout.h"
-#include "elf.h"
 #include "riscv.h"
 #include "defs.h"
-#include "fs.h"
+#include <stdatomic.h>
 
 /*
  * the kernel's page table.
@@ -85,23 +83,35 @@ kvminithart()
 //   12..20 -- 9 bits of level-0 index.
 //    0..11 -- 12 bits of byte offset within the page.
 pte_t *
-walk(pagetable_t pagetable, uint64 va, int alloc)
+walk(pagetable_t pagetable, uint64 va, int alloc_at_level)
 {
+
+  if(kernel_pagetable != 0 && alloc_at_level > 1)
+    panic("walk: you want to delete this walk for alloc level > 1");
+
   if(va >= MAXVA)
     panic("walk");
 
-  for(int level = 2; level > 0; level--) {
+#define IS_LEVEL(level) (alloc_at_level & (1 << (level)))
+  int level = PG_MAX_LEVEL;
+  for(; level > 0 && !IS_LEVEL(level); level--) {
     pte_t *pte = &pagetable[PX(level, va)];
-    if(*pte & PTE_V) {
+    int flags  = PTE_FLAGS(*pte);
+    if(flags == PTE_V) {
       pagetable = (pagetable_t)PTE2PA(*pte);
+    } else if (flags & PTE_V){
+      if(!alloc_at_level) break;
+      panic("Allocing child of a super page");
     } else {
-      if(!alloc || (pagetable = (pagetable_t)kalloc()) == 0)
+      if(!alloc_at_level || (pagetable = (pagetable_t)kalloc()) == 0)
         return 0;
       memset(pagetable, 0, PGSIZE);
       *pte = PA2PTE(pagetable) | PTE_V;
     }
   }
-  return &pagetable[PX(0, va)];
+
+  return &pagetable[PX(level, va)];
+#undef IS_LEVEL 
 }
 
 // Look up a virtual address, return the physical address,
@@ -152,17 +162,39 @@ mappages(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm)
   
   a = PGROUNDDOWN(va);
   last = PGROUNDDOWN(va + size - 1);
-  // TODO: change to support super pages c:
-  for(;;){
-    if((pte = walk(pagetable, a, 1)) == 0)
+
+  size = last - a + PGSIZE;
+  while(size > 0){
+    int level   = 0;
+    if( size % PG_SIZE(1) == 0 
+        && IS_ALIGNED(a, 1) 
+        && IS_ALIGNED(pa, 1) ){
+    
+      int next = 2;
+      for(; next <= PG_MAX_LEVEL; next++){
+        if( size % PG_SIZE(next) == 0
+           && IS_ALIGNED(a, next)
+           && IS_ALIGNED(pa, next) ) {
+          continue;
+        } else break;
+      }
+    
+      level = next - 1;
+    }
+
+    if((pte = walk(pagetable, a, 1 << level)) == 0)
       return -1;
     if(*pte & PTE_V)
       panic("mappages: remap");
     *pte = PA2PTE(pa) | perm | PTE_V;
-    if(a == last)
-      break;
-    a += PGSIZE;
-    pa += PGSIZE;
+
+
+    // a += PGSIZE;
+    // pa += PGSIZE;
+    uint64 allocated_size = PG_SIZE(level);
+    a    += allocated_size;
+    pa   += allocated_size;
+    size -= allocated_size;
   }
   return 0;
 }
@@ -184,8 +216,6 @@ uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
       panic("uvmunmap: walk");
     if((*pte & PTE_V) == 0)
       panic("uvmunmap: not mapped");
-    // Isn't this condition redundant? 
-    // Or was it made to help me later?
     if(PTE_FLAGS(*pte) == PTE_V) 
       panic("uvmunmap: not a leaf");
     if(do_free){
